@@ -1,0 +1,54 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta http-equiv="content-type" content="text/html; charset=utf-8"><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport"><meta content="yes" name="apple-mobile-web-app-capable"><meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"><meta content="telephone=no" name="format-detection"><meta name="description"><title>Android打包系列-基础知识 | Hexo</title><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/normalize/4.2.0/normalize.min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/pure-min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/0.6.0/grids-responsive-min.css"><link rel="stylesheet" type="text/css" href="/css/style.css?v=0.0.0"><link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.6.3/css/font-awesome.min.css"><script type="text/javascript" src="//cdn.bootcss.com/jquery/3.0.0/jquery.min.js"></script><link rel="Shortcut Icon" type="image/x-icon" href="/favicon.ico"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="apple-touch-icon-precomposed" href="/apple-touch-icon.png"></head><body><div class="body_container"><div id="header"><div class="site-name"><h1 class="hidden">Android打包系列-基础知识</h1><a id="logo" href="/.">Hexo</a><p class="description"></p></div><div id="nav-menu"><a href="/." class="current"><i class="fa fa-home"> 首页</i></a><a href="/archives/"><i class="fa fa-archive"> 归档</i></a><a href="/about/"><i class="fa fa-user"> 关于</i></a></div></div><div id="layout" class="pure-g"><div class="pure-u-1 pure-u-md-3-4"><div class="content_container"><div class="post"><h1 class="post-title">Android打包系列-基础知识</h1><div class="post-meta">Sep 6, 2016<script src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js" async></script><span id="busuanzi_container_page_pv"> | <span id="busuanzi_value_page_pv"></span><span> Hits</span></span></div><a data-thread-key="2016/09/06/android-package-essentials/" href="/2016/09/06/android-package-essentials/#comments" class="ds-thread-count"></a><div class="post-content"><p>从开始着手公司app安卓原生版本的开发，到如今2.3发布，已经过了快半年的时间，在这半年的时间里，已经逐渐掌握了Android 打包的一些基础知识。今天在这里小小梳理一下，顺便总结下安卓打包中需要注意的问题和一些有效的经验。</p>
+<p>###打包过程介绍</p>
+<p>首先，需要注意的是不管是打什么包，或者用什么工具打包，其背后都是执行的Android提供的构建系统。所以我们先从每个过程介绍一下Android Build系统是如何一步一步将 java文件、资源文件、第三方库等打包成APK的。</p>
+<p><img src="http://upload-images.jianshu.io/upload_images/1008428-b663a3f5f8c48673.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="Paste_Image.png"></p>
+<p>####资源文件的预编译<br>打包过程的第一步，便是资源文件的预编译，资源文件包括所有位于res/目录下的所有文件以及所有的AndroidManifest文件，在这一步中Android使用<strong>aapt</strong>工具将资源文件进行编译，生成R文件。R文件中每个ID的生成都有一个特殊的规则，每个id都是一个四字节的数字 0x PPTTNNNN, 第一个字节PP代表了资源文件代表的包名，在Android应用程序中PP始终是7f。第二个字节TT代表了资源文件的类型，aapt从0开始每发现一种新的资源类型就加1，最后面两个字节NNNN代表了资源文件在该类型中的顺序索引，跟TT类似，从0开始每发现一个新的资源文件名就加1。比如我们看一下我们工程中生成的R文件</p>
+<p><img src="http://upload-images.jianshu.io/upload_images/1008428-96d7f4e6111265de.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="id资源"></p>
+<p><img src="http://upload-images.jianshu.io/upload_images/1008428-6c7cad4d26e84a3a.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="menu资源"></p>
+<p>我们可以使用appt命令输出打包好的apk中所有的资源文件列表</p>
+<blockquote>
+<p>appt dump resources <path-to-apk></path-to-apk></p>
+</blockquote>
+<p>####AIDL文件编译</p>
+<p>AIDL 全称Android Interface definition language。在Android如果涉及到多进程比如远程service的时候就需要去定义aidl文件，用来统一描述进行间通信的接口。<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div></pre></td><td class="code"><pre><div class="line">interface IMyAidlInterface &#123;    </div><div class="line">    /**     * Demonstrates some basic types that you can use as parameters     * and return values in AIDL.     */    </div><div class="line">    void basicTypes(int anInt, long aLong, boolean aBoolean, float aFloat,            double aDouble, String aString);</div><div class="line">&#125;</div></pre></td></tr></table></figure></p>
+<p>Android打包时会将aidl文件转化为一个同名的java接口，如下图所以，可以在/build/generated/source/aidl下看到。<br><img src="http://upload-images.jianshu.io/upload_images/1008428-f934ddb214d859cb.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="AIDL打包"></p>
+<p>####Java文件的编译<br>这一步是标准的java文件编译的过程，编译的输入既包括我们手动编写的代码也包括前两步中生成java文件。编译的输出为.class文件。</p>
+<p>####生成.dex文件<br>第四步将上一步生成的class文件，以及引用的第三方库中的class文件一起转化为Dalvik字节码。</p>
+<p>虽然Android使用Java语言编程。但是Android并不使用标准的Java虚拟机进行java code。Android有自己的虚拟机 Dalvik以及5.0以上的ART。 可以大致了解一下Dalvik虚拟机和传统虚拟机的区别：</p>
+<ul>
+<li>Dalvik虚拟机占用内存更少</li>
+<li>JVM是基于Stack的(Stack based)，DVM是基于Register的(Register based). 跟进一步说，JVM将局部变量存在stack中，而DVM将变量保存在register中。因此标准java虚拟机需要更多的指令集，而DVM的指令集更少，另一方面DVM需要用寄存器编码指令的source 和 destination ，因此Dalvik的一条指令更长。</li>
+<li>在JVM运行时，会根据需要去load每个class文件。而Dalvik中所有的class都在一个dex文件中。</li>
+</ul>
+<p>基于第三条区别，我们在前第三步中生成的所有class文件以及第三库中引用的class文件都需要一起整合为一个dex文件。</p>
+<p><img src="http://upload-images.jianshu.io/upload_images/1008428-c169f5204cd9a015.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="JVM_vs_DVM.jpg"></p>
+<p>不过这里有一个潜在的危险，由于dex设计上的原因，单个dex内最多能引用的方法数上限为65536，这个数字对于当今很多APP来说都已经不够用了，不行的是，我们项目中就碰到了。不过Google也早早就放出了解决方案。这里就不详细讨论了，有兴趣了解可以戳<a href="http://developer.android.com/intl/zh-cn/tools/building/multidex.html" target="_blank" rel="external">这里</a>。</p>
+<h4 id="资源文件打包"><a href="#资源文件打包" class="headerlink" title="资源文件打包"></a>资源文件打包</h4><p>第一步资源文件已经使用aapt进行了预编译，是为了 让所有引用了资源的java文件正常编译，这里在打包之前，Android build system需要将所有的资源文件进行打包。这里依然是使用第一步中用到的aapt工具。打包后会生成一个<strong>resources-debug.ap_</strong>文件，这个文件中包含了图片,layout,menu,anim, AndroidManifest，其中图片都经过了优化，xml文件被编译成二进制格式。string被编译成单独的<strong>resources.arsc</strong>文件。</p>
+<p>####打包APK<br>第五步就是打包APK了，这一步的工作就是将dex文件，资源文件（编译的和未编译的）打包在一块，生成apk。</p>
+<p>####签名<br>第五步生成的apk文件，必须经过签名才能安装在设备上。签名前，我们必须生成自己的keystore</p>
+<blockquote>
+<p>$ keytool -genkey -v -keystore my-release-key.keystore-alias alias_name -keyalg RSA -keysize 2048 -validity 10000</p>
+</blockquote>
+<p>使用keytool，生成一个keystore，这个keystore包含一个有效期10000天的key。</p>
+<p>要对apk进行签名，需要用到java提供的签名工具</p>
+<blockquote>
+<p>$ jarsigner -verbose -sigalg SHA1withRSA -digestalg SHA1-keystore my-release-key.keystore my_application.apk alias_name</p>
+</blockquote>
+<p>如果需要验证某个apk是否签名过，可以使用</p>
+<blockquote>
+<p>jarsigner -verify -verbose -certs my_application.apk</p>
+</blockquote>
+<p>####对齐<br>打包apk的最后一步是一个对齐工作。这一步的工具简而言之就是使apk内所有未压缩的所有文件相对于apk的其实位置都是4字节对齐的。这样，这些文件既可以直接使用<strong>mmap</strong>映射访问。这样做的目的是为了减少app在运行时所占用的内存。</p>
+<blockquote>
+<p>zipalign -c -v 4 application.apk</p>
+</blockquote>
+</div><script type="text/javascript" src="/js/share.js?v=0.0.0" async></script><a data-url="http://yoursite.com/2016/09/06/android-package-essentials/" data-id="cisr684mh0000wjkw1wckuxwl" class="article-share-link">分享到</a><div class="tags"></div><div class="post-nav"><a href="/2016/09/06/custom-gradle-plugin-1/" class="next">Gradle自定义Plugin(上)</a></div><div data-thread-key="2016/09/06/android-package-essentials/" data-title="Android打包系列-基础知识" data-url="http://yoursite.com/2016/09/06/android-package-essentials/" class="ds-share flat"><div class="ds-share-inline"><ul class="ds-share-icons-16"><li data-toggle="ds-share-icons-more"><a href="javascript:void(0);" class="ds-more">分享到：</a></li><li><a href="javascript:void(0);" data-service="weibo" class="ds-weibo">微博</a></li><li><a href="javascript:void(0);" data-service="qzone" class="ds-qzone">QQ空间</a></li><li><a href="javascript:void(0);" data-service="qqt" class="ds-qqt">腾讯微博</a></li><li><a href="javascript:void(0);" data-service="wechat" class="ds-wechat">微信</a></li></ul><div class="ds-share-icons-more"></div></div></div><div data-thread-key="2016/09/06/android-package-essentials/" data-title="Android打包系列-基础知识" data-url="http://yoursite.com/2016/09/06/android-package-essentials/" data-author-key="1" class="ds-thread"></div></div></div></div><div class="pure-u-1-4 hidden_mid_and_down"><div id="sidebar"><div class="widget"><div class="widget-title"><i class="fa fa-folder-o"> 分类</i></div></div><div class="widget"><div class="widget-title"><i class="fa fa-star-o"> 标签</i></div><div class="tagcloud"><a href="/tags/Gradle/" style="font-size: 15px;">Gradle</a> <a href="/tags/Android/" style="font-size: 15px;">Android</a></div></div><div class="widget"><div class="widget-title"><i class="fa fa-file-o"> 最新文章</i></div><ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2016/09/06/android-package-essentials/">Android打包系列-基础知识</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/09/06/custom-gradle-plugin-1/">Gradle自定义Plugin(上)</a></li></ul></div><div class="widget"><div class="comments-title"><i class="fa fa-comment-o"> 最近评论</i></div><div data-num-items="5" data-show-avatars="0" data-show-time="1" data-show-admin="0" data-excerpt-length="32" data-show-title="1" class="ds-recent-comments"></div></div></div></div><div class="pure-u-1 pure-u-md-3-4"><div id="footer">© <a href="/." rel="nofollow">Hexo.</a> Powered by<a rel="nofollow" target="_blank" href="https://hexo.io"> Hexo.</a><a rel="nofollow" target="_blank" href="https://github.com/tufu9441/maupassant-hexo"> Theme</a> by<a rel="nofollow" target="_blank" href="https://github.com/pagecho"> Cho.</a></div></div></div><a id="rocket" href="#top" class="show"></a><script type="text/javascript" src="/js/totop.js?v=0.0.0" async></script><script type="text/javascript" src="//cdn.bootcss.com/fancybox/2.1.5/jquery.fancybox.pack.js" async></script><script type="text/javascript" src="/js/fancybox.js?v=0.0.0" async></script><link rel="stylesheet" type="text/css" href="/css/jquery.fancybox.css?v=0.0.0"><script>var duoshuoQuery = {short_name:'qinjunli123'};
+(function() {
+    var ds = document.createElement('script');
+    ds.type = 'text/javascript';ds.async = true;
+    ds.src = (document.location.protocol == 'https:' ? 'https:' : 'http:') + '//static.duoshuo.com/embed.js';
+    ds.charset = 'UTF-8';
+    (document.getElementsByTagName('head')[0]
+        || document.getElementsByTagName('body')[0]).appendChild(ds);
+})();
+</script><script type="text/javascript" src="/js/codeblock-resizer.js?v=0.0.0"></script><script type="text/javascript" src="/js/smartresize.js?v=0.0.0"></script></div></body></html>
